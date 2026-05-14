@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Environment / secrets
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Project-specific
+.cf_cache/
+.playwright-mcp/
+APPS/
+APPS_converted/
+cf_problems/
+user_problems/
+results/
+batch_error.log
+batch_output.log
+*.log
+
+# LLM config may contain API keys
+# (src/config.py reads from env vars, no hardcoded keys)

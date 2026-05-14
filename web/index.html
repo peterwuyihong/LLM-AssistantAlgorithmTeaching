@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LAAT - 大模型辅助算法竞赛学习</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
+  <style>
+    [v-cloak] { display: none; }
+    .tab-active { border-bottom: 2px solid #3b82f6; color: #3b82f6; font-weight: 600; }
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+    pre code { font-size: 0.85rem; line-height: 1.5; }
+    .log-line { font-family: 'Consolas', 'Monaco', monospace; font-size: 0.8rem; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 3px; }
+  </style>
+</head>
+<body class="bg-gray-950 text-gray-200 min-h-screen">
+<div id="app" v-cloak>
+
+<!-- Header -->
+<header class="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center justify-between sticky top-0 z-50">
+<div class="flex items-center gap-3">
+<span class="text-xl font-bold text-blue-400">LAAT</span>
+<span class="text-sm text-gray-500">大模型辅助算法竞赛学习</span>
+</div>
+<div class="flex items-center gap-3">
+<nav class="flex gap-1">
+<button v-for="t in tabs" :key="t.key" @click="currentTab=t.key"
+:class="currentTab===t.key ? 'tab-active' : 'text-gray-400 hover:text-gray-200'"
+class="px-4 py-2 text-sm transition-all">{{ t.label }}</button>
+</nav>
+<button @click="openSettings" class="text-gray-400 hover:text-blue-400 transition-all p-1.5 rounded hover:bg-gray-800" title="设置">
+<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+</button>
+</div>
+</header>
+
+  <main class="max-w-7xl mx-auto px-4 py-6">
+
+    <!-- ═══════ TAB: Submit Problem ═══════ -->
+    <section v-if="currentTab==='submit'">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+        <!-- Left: Form -->
+        <div class="space-y-4">
+          <div class="bg-gray-900 rounded-lg p-5 border border-gray-800 space-y-4">
+            <h2 class="text-lg font-semibold text-blue-400">提交问题</h2>
+
+            <div>
+              <label class="block text-sm text-gray-400 mb-1">题目描述 *</label>
+              <textarea v-model="form.question" rows="6"
+                        class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                        placeholder="输入完整的算法竞赛题目描述..."></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-sm text-gray-400 mb-1">输入格式</label>
+                <textarea v-model="form.input_format" rows="3"
+                          class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
+              </div>
+              <div>
+                <label class="block text-sm text-gray-400 mb-1">输出格式</label>
+                <textarea v-model="form.output_format" rows="3"
+                          class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"></textarea>
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm text-gray-400 mb-1">数据范围</label>
+              <input v-model="form.data_range"
+                     class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                     placeholder="例如: 1 <= n <= 100000">
+            </div>
+          </div>
+
+          <!-- Test Cases -->
+          <div class="bg-gray-900 rounded-lg p-5 border border-gray-800 space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-lg font-semibold text-blue-400">测试数据</h2>
+              <button @click="addTestCase" class="text-xs bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded">+ 添加</button>
+            </div>
+            <p class="text-xs text-gray-500">提供样例输入/输出，用于验证暴力代码和优化解的正确性</p>
+
+            <div v-for="(tc, i) in form.test_cases" :key="i" class="bg-gray-800 rounded p-3 space-y-2 relative">
+              <div class="flex justify-between items-center">
+                <span class="text-xs text-gray-400">样例 {{ i+1 }}</span>
+                <button @click="form.test_cases.splice(i,1)" class="text-xs text-red-400 hover:text-red-300">删除</button>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-xs text-gray-500">输入</label>
+                  <textarea v-model="tc.input" rows="3"
+                            class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+                <div>
+                  <label class="text-xs text-gray-500">输出</label>
+                  <textarea v-model="tc.output" rows="3"
+                            class="w-full bg-gray-900 border border-gray-700 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-blue-500"></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Settings + Submit -->
+          <div class="bg-gray-900 rounded-lg p-5 border border-gray-800 space-y-3">
+            <h2 class="text-lg font-semibold text-blue-400">运行配置</h2>
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="text-xs text-gray-400">最大重试次数</label>
+                <input v-model.number="form.max_retries" type="number" min="1" max="10"
+                       class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="text-xs text-gray-400">对拍测试数量</label>
+                <input v-model.number="form.num_tests" type="number" min="5" max="50"
+                       class="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm focus:outline-none focus:border-blue-500">
+              </div>
+              <div class="flex items-end">
+                <label class="flex items-center gap-2 text-sm text-gray-400 cursor-pointer">
+                  <input v-model="form.ignore_format" type="checkbox" class="rounded">
+                  忽略格式差异
+                </label>
+              </div>
+            </div>
+            <button @click="submitProblem" :disabled="solving || !form.question.trim()"
+                    class="w-full py-2.5 rounded font-semibold text-sm transition-all"
+                    :class="solving ? 'bg-gray-700 text-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'">
+              {{ solving ? '求解中...' : '开始求解' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Progress + Result -->
+        <div class="space-y-4">
+          <!-- Progress -->
+          <div v-if="solving || solveResult" class="bg-gray-900 rounded-lg p-5 border border-gray-800 space-y-3">
+            <h2 class="text-lg font-semibold text-blue-400">求解进度</h2>
+
+              <div v-if="solving" class="flex items-center gap-3">
+                <div class="animate-spin h-5 w-5 border-2 border-blue-400 border-t-transparent rounded-full"></div>
+                <span class="text-sm text-gray-300">正在运行 LangGraph 对拍流程...</span>
+                <span v-if="solveStage" class="text-xs text-blue-400 bg-gray-800 px-2 py-0.5 rounded">{{ solveStage }}</span>
+              </div>
+
+            <div v-if="solveResult" class="space-y-2">
+              <div :class="solveResult.result==='success' ? 'text-green-400' : 'text-red-400'" class="text-lg font-bold">
+                {{ solveResult.result === 'success' ? 'PASS' : 'FAIL' }}
+              </div>
+              <p class="text-sm text-gray-400">{{ solveResult.result_detail }}</p>
+              <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="bg-gray-800 rounded p-2">
+                  <div class="text-gray-500">暴力</div>
+                  <div :class="solveResult.bf_attempt > 0 ? 'text-green-400' : 'text-gray-600'" class="font-bold">{{ solveResult.bf_attempt }}次</div>
+                </div>
+                <div class="bg-gray-800 rounded p-2">
+                  <div class="text-gray-500">数据生成</div>
+                  <div :class="solveResult.dm_attempt > 0 ? 'text-green-400' : 'text-gray-600'" class="font-bold">{{ solveResult.dm_attempt }}次</div>
+                </div>
+                <div class="bg-gray-800 rounded p-2">
+                  <div class="text-gray-500">优化解</div>
+                  <div :class="solveResult.sol_attempt > 0 ? 'text-green-400' : 'text-gray-600'" class="font-bold">{{ solveResult.sol_attempt }}次</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Execution Log -->
+            <div v-if="solveLogs.length" class="mt-2 max-h-48 overflow-y-auto bg-gray-800 rounded p-2">
+              <div v-for="(log, i) in solveLogs" :key="i" class="log-line text-gray-400 py-0.5">
+                <span :class="log.includes('PASS') || log.includes('passed') ? 'text-green-400' : log.includes('FAIL') || log.includes('RE') || log.includes('TLE') || log.includes('WA') ? 'text-red-400' : 'text-gray-400'">
+                  {{ log }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Code Panels (shown after solving or viewing) -->
+          <div v-if="codes.brute_force || codes.data_maker || codes.solution">
+            <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+              <div class="flex border-b border-gray-800">
+                <button v-for="ct in codeTabs" :key="ct.key" @click="activeCodeTab=ct.key"
+                        :class="activeCodeTab===ct.key ? 'bg-gray-800 text-blue-400' : 'text-gray-500 hover:text-gray-300'"
+                        class="px-4 py-2 text-sm font-medium transition-all flex items-center gap-1">
+                  <span>{{ ct.label }}</span>
+                  <span v-if="ct.key==='bf' && codes.brute_force" class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                  <span v-if="ct.key==='dm' && codes.data_maker" class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                  <span v-if="ct.key==='sol' && codes.solution" class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+                </button>
+              </div>
+              <div class="relative">
+                <button @click="copyCode(activeCodeTabCode)" class="absolute top-2 right-2 text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded z-10">复制</button>
+                <pre class="p-4 overflow-x-auto max-h-96"><code class="language-python" v-html="highlightedCode"></code></pre>
+              </div>
+            </div>
+          </div>
+
+          <!-- Placeholder when no result -->
+          <div v-if="!solving && !solveResult" class="bg-gray-900 rounded-lg p-10 border border-gray-800 text-center">
+            <p class="text-gray-500 text-sm">填写左侧表单并点击「开始求解」</p>
+            <p class="text-gray-600 text-xs mt-2">系统将自动生成暴力代码、数据生成器、优化解，并通过对拍验证</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ TAB: APPS Dataset ═══════ -->
+    <section v-if="currentTab==='apps'">
+      <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+        <div class="p-4 flex items-center justify-between border-b border-gray-800">
+          <div class="flex items-center gap-4">
+            <h2 class="text-lg font-semibold text-blue-400">APPS 数据集</h2>
+            <select v-model="appsSplit" @change="loadAppsList" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm">
+              <option value="train">Train</option>
+              <option value="test">Test</option>
+            </select>
+          </div>
+          <div class="flex items-center gap-2">
+            <input v-model="appsSearch" placeholder="搜索题号..." class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm w-32">
+            <button @click="loadAppsList" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">刷新</button>
+          </div>
+        </div>
+
+  <!-- Table -->
+  <div class="overflow-y-auto max-h-[65vh]">
+  <table class="w-full text-sm">
+  <thead class="bg-gray-800 sticky top-0">
+  <tr>
+  <th class="text-left px-4 py-2 text-gray-400 font-medium">题号</th>
+  <th class="text-center px-4 py-2 text-gray-400 font-medium">状态</th>
+  <th class="text-center px-4 py-2 text-gray-400 font-medium">结果</th>
+  <th class="text-center px-4 py-2 text-gray-400 font-medium">操作</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr v-for="p in filteredAppsList" :key="p.id" class="border-t border-gray-800 hover:bg-gray-800/50">
+  <td class="px-4 py-2 font-mono text-gray-300">{{ p.id }}</td>
+  <td class="px-4 py-2 text-center">
+  <span v-if="appsSolvingId===p.id" class="text-xs bg-blue-900 text-blue-400 px-2 py-0.5 rounded animate-pulse">求解中</span>
+  <span v-else-if="p.solved" class="text-xs bg-green-900 text-green-400 px-2 py-0.5 rounded">已求解</span>
+  <span v-else class="text-xs bg-gray-800 text-gray-500 px-2 py-0.5 rounded">未求解</span>
+  </td>
+  <td class="px-4 py-2 text-center">
+  <span v-if="p.result==='success'" class="text-green-400 font-bold">PASS</span>
+  <span v-else-if="p.result==='fail'" class="text-red-400 font-bold">FAIL</span>
+  <span v-else class="text-gray-600">-</span>
+  </td>
+  <td class="px-4 py-2 text-center">
+  <button v-if="!p.solved || appsSolvingId===p.id" @click="solveApps(p.id)" :disabled="!!appsSolvingId && appsSolvingId!==p.id"
+  class="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 px-3 py-1 rounded text-white">
+  {{ appsSolvingId===p.id ? '求解中...' : '求解' }}
+  </button>
+  <button v-if="p.solved && appsSolvingId!==p.id" @click="viewProblem('apps-'+appsSplit, p.id)"
+  class="text-xs bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">查看</button>
+  <button v-if="p.solved && appsSolvingId!==p.id" @click="solveApps(p.id, true)" :disabled="!!appsSolvingId"
+  class="text-xs bg-yellow-700 hover:bg-yellow-600 disabled:bg-gray-700 disabled:text-gray-500 px-2 py-1 rounded ml-1"
+  title="强制重跑">重跑</button>
+  </td>
+  </tr>
+  </tbody>
+  </table>
+  </div>
+
+  <!-- APPS Solving Log (shown when actively solving) -->
+  <div v-if="appsSolvingId && appsSolvingLogs.length" class="border-t border-gray-800 p-3 max-h-32 overflow-y-auto bg-gray-800">
+  <div v-for="(log, i) in appsSolvingLogs" :key="i" class="log-line text-gray-400 py-0.5">
+  <span :class="log.includes('PASS') || log.includes('passed') ? 'text-green-400' : log.includes('FAIL') || log.includes('RE') || log.includes('TLE') || log.includes('WA') ? 'text-red-400' : 'text-gray-400'">
+  {{ log }}
+  </span>
+  </div>
+  </div>
+
+<div v-if="appsList.length===0" class="p-8 text-center text-gray-600">加载中...</div>
+</div>
+</section>
+
+<!-- ═══════ TAB: Codeforces ═══════ -->
+<section v-if="currentTab==='cf'">
+<div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+  <div class="p-4 flex items-center justify-between border-b border-gray-800 flex-wrap gap-2">
+    <h2 class="text-lg font-semibold text-blue-400">Codeforces</h2>
+    <div class="flex items-center gap-2 flex-wrap">
+      <select v-model="cfRatingMin" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm">
+        <option value="800">800+</option>
+        <option value="1000">1000+</option>
+        <option value="1200">1200+</option>
+        <option value="1400">1400+</option>
+        <option value="1600">1600+</option>
+        <option value="1900">1900+</option>
+        <option value="0">All</option>
+      </select>
+      <select v-model="cfRatingMax" class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm">
+        <option value="1200">1200-</option>
+        <option value="1500">1500-</option>
+        <option value="1800">1800-</option>
+        <option value="2000">2000-</option>
+        <option value="2500">2500-</option>
+        <option value="4000">All</option>
+      </select>
+      <input v-model="cfTagFilter" placeholder="Tag (e.g. dp, math)..." class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm w-36">
+      <input v-model="cfSearch" placeholder="Contest ID..." class="bg-gray-800 border border-gray-700 rounded px-2 py-1 text-sm w-28">
+      <button @click="loadCFProblems" class="text-sm bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-white">搜索</button>
+    </div>
+  </div>
+
+  <div v-if="cfLoading" class="p-8 text-center text-gray-500">加载中...</div>
+
+  <div v-else class="overflow-y-auto max-h-[65vh]">
+  <table class="w-full text-sm">
+  <thead class="bg-gray-800 sticky top-0">
+  <tr>
+  <th class="text-left px-4 py-2 text-gray-400 font-medium">题目</th>
+  <th class="text-center px-3 py-2 text-gray-400 font-medium">Rating</th>
+  <th class="text-center px-3 py-2 text-gray-400 font-medium">Tags</th>
+  <th class="text-center px-3 py-2 text-gray-400 font-medium">通过</th>
+  <th class="text-center px-4 py-2 text-gray-400 font-medium">操作</th>
+  </tr>
+  </thead>
+  <tbody>
+  <tr v-for="p in cfProblems" :key="p.contestId+p.index" class="border-t border-gray-800 hover:bg-gray-800/50">
+  <td class="px-4 py-2">
+    <a :href="p.url" target="_blank" class="text-blue-400 hover:text-blue-300 font-mono text-sm">{{ p.contestId }}{{ p.index }}</a>
+    <span class="text-gray-300 text-sm ml-2">{{ p.name }}</span>
+  </td>
+  <td class="px-3 py-2 text-center">
+    <span :class="p.rating >= 2400 ? 'text-red-400' : p.rating >= 2000 ? 'text-orange-400' : p.rating >= 1600 ? 'text-purple-400' : p.rating >= 1200 ? 'text-blue-400' : 'text-green-400'" class="font-bold text-sm">
+    {{ p.rating || '-' }}
+    </span>
+  </td>
+  <td class="px-3 py-2 text-center">
+    <span v-for="tag in p.tags.slice(0,3)" :key="tag" class="text-xs bg-gray-800 text-gray-500 px-1.5 py-0.5 rounded mr-1">{{ tag }}</span>
+    <span v-if="p.tags.length > 3" class="text-xs text-gray-600">+{{ p.tags.length - 3 }}</span>
+  </td>
+  <td class="px-3 py-2 text-center text-xs text-gray-500">{{ p.solvedCount }}</td>
+  <td class="px-4 py-2 text-center whitespace-nowrap">
+    <button @click="cfImport(p.contestId, p.index)" :disabled="cfImportingId===`${p.contestId}${p.index}`"
+      class="text-xs bg-green-700 hover:bg-green-600 disabled:bg-gray-700 disabled:text-gray-500 px-2 py-1 rounded mr-1">
+      {{ cfImported[`${p.contestId}${p.index}`] ? '已导入' : '导入' }}
+    </button>
+    <button @click="cfTranslate(p.contestId, p.index)" :disabled="cfTranslatingId===`${p.contestId}${p.index}`"
+      class="text-xs bg-purple-700 hover:bg-purple-600 disabled:bg-gray-700 disabled:text-gray-500 px-2 py-1 rounded mr-1">
+      {{ cfTranslatingId===`${p.contestId}${p.index}` ? '翻译中...' : '翻译' }}
+    </button>
+    <button @click="cfSolve(p.contestId, p.index)" :disabled="cfSolvingId===`${p.contestId}${p.index}`"
+      class="text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 px-2 py-1 rounded">
+      {{ cfSolvingId===`${p.contestId}${p.index}` ? '求解中...' : '求解' }}
+    </button>
+  </td>
+  </tr>
+  </tbody>
+  </table>
+  </div>
+
+  <div v-if="cfProblems.length===0 && !cfLoading" class="p-8 text-center text-gray-600">点击「搜索」加载题目</div>
+
+  <!-- CF Solving Log -->
+  <div v-if="cfSolvingId && cfSolvingLogs.length" class="border-t border-gray-800 p-3 max-h-32 overflow-y-auto bg-gray-800">
+  <div v-for="(log, i) in cfSolvingLogs" :key="i" class="log-line text-gray-400 py-0.5">{{ log }}</div>
+  </div>
+</div>
+
+<!-- CF Translation Result Modal -->
+<div v-if="cfTranslation" class="mt-4 bg-gray-900 rounded-lg border border-gray-800 p-5">
+  <div class="flex items-center justify-between mb-3">
+    <h3 class="text-sm font-semibold text-purple-400">翻译结果</h3>
+    <button @click="cfTranslation=''" class="text-xs text-gray-500 hover:text-gray-300">关闭</button>
+  </div>
+  <pre class="text-sm text-gray-300 whitespace-pre-wrap max-h-64 overflow-y-auto">{{ cfTranslation }}</pre>
+</div>
+</section>
+
+<!-- ═══════ TAB: History ═══════ -->
+    <section v-if="currentTab==='history'">
+      <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+        <div class="p-4 flex items-center justify-between border-b border-gray-800">
+          <h2 class="text-lg font-semibold text-blue-400">求解历史</h2>
+          <button @click="loadProblems" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">刷新</button>
+        </div>
+
+        <div v-if="problems.length===0" class="p-8 text-center text-gray-600">暂无求解记录</div>
+
+        <div class="divide-y divide-gray-800">
+          <div v-for="p in problems" :key="p.id+p.source" @click="viewProblem(p.source, p.id)"
+               class="px-4 py-3 hover:bg-gray-800/50 cursor-pointer flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span :class="p.result==='success' ? 'text-green-400' : 'text-red-400'" class="font-bold text-sm w-12">
+                {{ p.result === 'success' ? 'PASS' : 'FAIL' }}
+              </span>
+              <div>
+                <div class="text-sm text-gray-300">{{ p.id }}</div>
+                <div class="text-xs text-gray-600">{{ p.question_title }}</div>
+              </div>
+            </div>
+            <div class="text-right">
+              <span class="text-xs text-gray-500 bg-gray-800 px-2 py-0.5 rounded">{{ p.source }}</span>
+              <div class="text-xs text-gray-600 mt-1">{{ p.timestamp }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════ TAB: View Problem Detail ═══════ -->
+    <section v-if="currentTab==='detail' && detailData">
+      <div class="space-y-4">
+        <button @click="currentTab=detailFromTab" class="text-sm text-gray-400 hover:text-gray-200 flex items-center gap-1">
+          &larr; 返回
+        </button>
+
+        <!-- Problem Info -->
+        <div class="bg-gray-900 rounded-lg p-5 border border-gray-800">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-semibold text-blue-400">{{ detailData.id }}</h2>
+            <span :class="detailData.result?.result==='success' ? 'text-green-400' : 'text-red-400'" class="font-bold">
+              {{ detailData.result?.result === 'success' ? 'PASS' : 'FAIL' }}
+            </span>
+          </div>
+          <div v-if="detailData.question" class="text-sm text-gray-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+            {{ detailData.question.question }}
+          </div>
+          <div v-if="detailData.result?.result_detail" class="mt-2 text-xs text-gray-500">
+            {{ detailData.result.result_detail }}
+          </div>
+        </div>
+
+      <!-- Code Panels -->
+      <div class="bg-gray-900 rounded-lg border border-gray-800 overflow-hidden">
+        <div class="flex border-b border-gray-800">
+          <button v-for="ct in codeTabs" :key="ct.key" @click="detailCodeTab=ct.key"
+            :class="detailCodeTab===ct.key ? 'bg-gray-800 text-blue-400' : 'text-gray-500 hover:text-gray-300'"
+            class="px-4 py-2 text-sm font-medium transition-all flex items-center gap-1">
+            <span>{{ ct.label }}</span>
+            <span v-if="ct.key==='bf' && detailData.brute_force_code" class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+            <span v-if="ct.key==='dm' && detailData.data_maker_code" class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+            <span v-if="ct.key==='sol' && detailData.solution_code" class="w-1.5 h-1.5 bg-green-400 rounded-full"></span>
+          </button>
+        </div>
+        <div class="relative">
+          <button @click="copyCode(activeDetailCode)" class="absolute top-2 right-2 text-xs bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded z-10">复制</button>
+          <pre class="p-4 overflow-x-auto max-h-96"><code class="language-python" v-html="highlightedDetailCode"></code></pre>
+        </div>
+      </div>
+
+        <!-- Execution Log -->
+        <div v-if="detailData.execution_log" class="bg-gray-900 rounded-lg p-5 border border-gray-800">
+          <h3 class="text-sm font-semibold text-gray-400 mb-2">执行日志</h3>
+          <pre class="text-xs text-gray-500 whitespace-pre-wrap max-h-48 overflow-y-auto font-mono">{{ detailData.execution_log }}</pre>
+        </div>
+
+        <!-- Sample Cases -->
+        <div v-if="detailData.sample_cases && detailData.sample_cases.length" class="bg-gray-900 rounded-lg p-5 border border-gray-800">
+          <h3 class="text-sm font-semibold text-gray-400 mb-2">样例测试</h3>
+          <div v-for="(tc, i) in detailData.sample_cases" :key="i" class="mb-3 bg-gray-800 rounded p-3">
+            <div class="grid grid-cols-2 gap-3 text-xs font-mono">
+              <div><span class="text-gray-500 block mb-1">输入</span><pre class="whitespace-pre-wrap text-gray-300">{{ tc.input }}</pre></div>
+              <div><span class="text-gray-500 block mb-1">输出</span><pre class="whitespace-pre-wrap text-gray-300">{{ tc.output }}</pre></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+<!-- ═══════ Settings Modal ═══════ -->
+<div v-if="showSettings" class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center" @click.self="showSettings=false">
+<div class="bg-gray-900 border border-gray-700 rounded-xl w-full max-w-lg mx-4 shadow-2xl">
+  <div class="px-6 py-4 border-b border-gray-800 flex items-center justify-between">
+    <h2 class="text-lg font-semibold text-blue-400">LLM 设置</h2>
+    <button @click="showSettings=false" class="text-gray-500 hover:text-gray-300 text-xl">&times;</button>
+  </div>
+  <div class="px-6 py-5 space-y-4">
+    <div>
+      <label class="block text-sm text-gray-400 mb-1">模型名称</label>
+      <input v-model="settingsForm.model"
+        class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+        placeholder="例如: deepseek-chat, gpt-4o, ...">
+    </div>
+    <div>
+      <label class="block text-sm text-gray-400 mb-1">API Base URL</label>
+      <input v-model="settingsForm.base_url"
+        class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+        placeholder="例如: https://api.deepseek.com/v1">
+    </div>
+    <div>
+      <label class="block text-sm text-gray-400 mb-1">API Key</label>
+      <div class="relative">
+        <input :type="showApiKey ? 'text' : 'password'" v-model="settingsForm.api_key"
+          class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 pr-16"
+          placeholder="sk-...">
+        <button @click="showApiKey=!showApiKey" class="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 hover:text-gray-300 px-1">
+          {{ showApiKey ? '隐藏' : '显示' }}
+        </button>
+      </div>
+      <p class="text-xs text-gray-600 mt-1">当前: {{ settingsForm.api_key_masked }}</p>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Max Tokens</label>
+        <input v-model.number="settingsForm.max_tokens" type="number" min="256" max="32768" step="256"
+          class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-sm text-gray-400 mb-1">Temperature</label>
+        <input v-model.number="settingsForm.temperature" type="number" min="0" max="2" step="0.1"
+          class="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+      </div>
+    </div>
+  </div>
+  <div class="px-6 py-4 border-t border-gray-800 flex items-center justify-between">
+    <span v-if="settingsSaved" class="text-xs text-green-400">已保存</span>
+    <span v-else class="text-xs text-gray-600"></span>
+    <div class="flex gap-2">
+      <button @click="showSettings=false" class="px-4 py-2 text-sm bg-gray-700 hover:bg-gray-600 rounded">关闭</button>
+      <button @click="saveSettings" :disabled="settingsSaving"
+        class="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-500 rounded text-white">
+        {{ settingsSaving ? '保存中...' : '保存' }}
+      </button>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+
+<script>
+const { createApp, ref, computed, watch, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const tabs = [
+      { key: 'submit', label: '提交问题' },
+      { key: 'apps', label: 'APPS数据集' },
+      { key: 'cf', label: 'Codeforces' },
+      { key: 'history', label: '求解历史' },
+    ];
+    const currentTab = ref('submit');
+    const detailFromTab = ref('history');
+
+    // ──── Submit Form ────
+    const form = ref({
+      question: '',
+      input_format: '',
+      output_format: '',
+      data_range: '',
+      test_cases: [{ input: '', output: '' }],
+      max_retries: 3,
+      num_tests: 20,
+      ignore_format: false,
+    });
+    const solving = ref(false);
+    const solveResult = ref(null);
+    const solveLogs = ref([]);
+    const solveStage = ref('');
+    const codes = ref({ brute_force: '', data_maker: '', solution: '' });
+    const activeCodeTab = ref('bf');
+    const codeTabs = [
+      { key: 'bf', label: '暴力代码' },
+      { key: 'dm', label: '数据生成器' },
+      { key: 'sol', label: '优化解' },
+    ];
+
+    function addTestCase() {
+      form.value.test_cases.push({ input: '', output: '' });
+    }
+
+    const activeCodeTabCode = computed(() => {
+      if (activeCodeTab.value === 'bf') return codes.value.brute_force || '';
+      if (activeCodeTab.value === 'dm') return codes.value.data_maker || '';
+      return codes.value.solution || '';
+    });
+
+    const highlightedCode = computed(() => {
+      try { return hljs.highlight(activeCodeTabCode.value, { language: 'python' }).value; }
+      catch { return activeCodeTabCode.value; }
+    });
+
+    function copyCode(text) {
+      navigator.clipboard.writeText(text).then(() => alert('已复制到剪贴板'));
+    }
+
+    // ──── WebSocket + Polling helpers ────
+
+    function connectTaskWS(taskId, onLog, onStage, onDone) {
+      /** Try WebSocket, return true if connected. */
+      try {
+        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${protocol}//${location.host}/ws/solve/${taskId}`);
+        ws.onmessage = (event) => {
+          const msg = JSON.parse(event.data);
+          if (msg.log) onLog(msg.log);
+          if (msg.stage) onStage(msg.stage);
+          if (msg.status === 'completed' || msg.status === 'failed') {
+            onDone(msg.result || {}, msg.status);
+            ws.close();
+          }
+        };
+        ws.onerror = () => { ws.close(); };
+        return true;
+      } catch { return false; }
+    }
+
+    async function pollTask(taskId, onLog, onStage, onDone) {
+      /** Fallback: poll GET /api/task/{taskId} every 2s. */
+      while (true) {
+        try {
+          const r = await fetch(`/api/task/${taskId}`);
+          const t = await r.json();
+          if (t.log) onLog(t.log);
+          if (t.stage) onStage(t.stage);
+          if (t.status === 'completed' || t.status === 'failed') {
+            onDone(t.result || {}, t.status);
+            return;
+          }
+        } catch { /* retry */ }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    async function loadProblemCodes(problemId) {
+      try {
+        const pr = await fetch(`/api/problems/${problemId}`);
+        const pd = await pr.json();
+        codes.value = {
+          brute_force: pd.brute_force_code || '',
+          data_maker: pd.data_maker_code || '',
+          solution: pd.solution_code || '',
+        };
+      } catch { /* ignore */ }
+    }
+
+    async function submitProblem() {
+      solving.value = true;
+      solveResult.value = null;
+      solveLogs.value = [];
+      solveStage.value = '';
+      codes.value = { brute_force: '', data_maker: '', solution: '' };
+
+      try {
+        const body = {
+          question: form.value.question,
+          input_format: form.value.input_format,
+          output_format: form.value.output_format,
+          data_range: form.value.data_range,
+          test_inputs: form.value.test_cases.map(t => t.input),
+          test_outputs: form.value.test_cases.map(t => t.output),
+          ignore_format: form.value.ignore_format,
+          max_retries: form.value.max_retries,
+          num_tests: form.value.num_tests,
+        };
+        const res = await fetch('/api/solve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!data.task_id) { solving.value = false; return; }
+
+        const onLog = (logs) => { solveLogs.value = logs; };
+        const onStage = (stage) => { solveStage.value = stage; };
+        const onDone = async (result) => {
+          solveResult.value = result;
+          await loadProblemCodes(data.problem_id);
+          solving.value = false;
+        };
+
+        // Try WebSocket first, fallback to polling
+        const wsConnected = connectTaskWS(data.task_id, onLog, onStage, onDone);
+        if (!wsConnected) {
+          pollTask(data.task_id, onLog, onStage, onDone);
+        }
+      } catch (e) {
+        solving.value = false;
+        solveLogs.value = [`[ERROR] ${e.message}`];
+      }
+    }
+
+    // ──── APPS Dataset ────
+    const appsSplit = ref('train');
+    const appsList = ref([]);
+    const appsSearch = ref('');
+    const appsSolvingId = ref(null);
+    const appsSolvingLogs = ref([]);
+    const appsPage = ref(100);
+
+    const filteredAppsList = computed(() => {
+      if (!appsSearch.value) return appsList.value;
+      return appsList.value.filter(p => p.id.includes(appsSearch.value));
+    });
+
+    async function loadAppsList() {
+      try {
+        const r = await fetch(`/api/apps-list?split=${appsSplit.value}&limit=${appsPage.value}`);
+        appsList.value = await r.json();
+      } catch { appsList.value = []; }
+    }
+
+    async function solveApps(problemId, force = false) {
+      appsSolvingId.value = problemId;
+      appsSolvingLogs.value = [];
+      try {
+        const res = await fetch('/api/solve-apps', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ problem_id: problemId, split: appsSplit.value, force }),
+        });
+        const data = await res.json();
+
+        if (data.status === 'skipped') {
+          loadAppsList();
+          appsSolvingId.value = null;
+          return;
+        }
+
+        const onLog = (logs) => { appsSolvingLogs.value = logs; };
+        const onStage = () => {};
+        const onDone = () => {
+          loadAppsList();
+          appsSolvingId.value = null;
+        };
+
+        const wsConnected = connectTaskWS(data.task_id, onLog, onStage, onDone);
+        if (!wsConnected) {
+          pollTask(data.task_id, onLog, onStage, onDone);
+        }
+      } catch {
+        appsSolvingId.value = null;
+      }
+    }
+
+    // ──── Codeforces ────
+    const cfProblems = ref([]);
+    const cfLoading = ref(false);
+    const cfSearch = ref('');
+    const cfTagFilter = ref('');
+    const cfRatingMin = ref(800);
+    const cfRatingMax = ref(4000);
+    const cfImportingId = ref(null);
+    const cfTranslatingId = ref(null);
+    const cfSolvingId = ref(null);
+    const cfSolvingLogs = ref([]);
+    const cfTranslation = ref('');
+    const cfImported = ref({});  // Track which problems are imported
+
+    async function loadCFProblems() {
+      cfLoading.value = true;
+      try {
+        const params = new URLSearchParams({
+          rating_min: cfRatingMin.value,
+          rating_max: cfRatingMax.value,
+          count: 50,
+        });
+        if (cfTagFilter.value) params.set('tags', cfTagFilter.value);
+        const r = await fetch(`/api/cf/problems?${params}`);
+        cfProblems.value = await r.json();
+      } catch { cfProblems.value = []; }
+      cfLoading.value = false;
+    }
+
+    async function cfImport(contestId, index) {
+      const key = `${contestId}${index}`;
+      cfImportingId.value = key;
+      try {
+        const res = await fetch('/api/cf/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contest_id: contestId, index }),
+        });
+        const data = await res.json();
+        if (data.status === 'imported' || data.status === 'exists') {
+          cfImported.value[key] = true;
+        }
+      } catch { /* ignore */ }
+      cfImportingId.value = null;
+    }
+
+    async function cfTranslate(contestId, index) {
+      const key = `${contestId}${index}`;
+      cfTranslatingId.value = key;
+      cfTranslation.value = '翻译中...';
+      try {
+        // Import first to get the problem statement
+        await cfImport(contestId, index);
+        // Then load the question
+        const pr = await fetch(`/api/problems/${key}`);
+        const pd = await pr.json();
+        const questionText = pd.question?.question || '';
+        if (!questionText) {
+          cfTranslation.value = '未能获取题面，可能被 Cloudflare 拦截';
+          cfTranslatingId.value = null;
+          return;
+        }
+        const res = await fetch('/api/cf/translate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: questionText }),
+        });
+        const data = await res.json();
+        cfTranslation.value = data.translated || '翻译失败';
+      } catch (e) {
+        cfTranslation.value = `翻译失败: ${e.message}`;
+      }
+      cfTranslatingId.value = null;
+    }
+
+    async function cfSolve(contestId, index) {
+      const key = `${contestId}${index}`;
+      cfSolvingId.value = key;
+      cfSolvingLogs.value = [];
+      try {
+        // Import first
+        await cfImport(contestId, index);
+        // Then solve
+        const res = await fetch('/api/cf/solve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contest_id: contestId, index }),
+        });
+        const data = await res.json();
+
+        if (data.status === 'skipped') {
+          cfSolvingId.value = null;
+          return;
+        }
+
+        const onLog = (logs) => { cfSolvingLogs.value = logs; };
+        const onStage = () => {};
+        const onDone = () => { cfSolvingId.value = null; loadProblems(); };
+
+        const wsConnected = connectTaskWS(data.task_id, onLog, onStage, onDone);
+        if (!wsConnected) {
+          pollTask(data.task_id, onLog, onStage, onDone);
+        }
+      } catch {
+        cfSolvingId.value = null;
+      }
+    }
+
+    // ──── History ────
+    const problems = ref([]);
+
+    async function loadProblems() {
+      try {
+        const r = await fetch('/api/problems');
+        problems.value = await r.json();
+      } catch { problems.value = []; }
+    }
+
+    // ──── Problem Detail ────
+    const detailData = ref(null);
+    const detailCodeTab = ref('bf');
+
+    const activeDetailCode = computed(() => {
+      if (!detailData.value) return '';
+      if (detailCodeTab.value === 'bf') return detailData.value.brute_force_code || '';
+      if (detailCodeTab.value === 'dm') return detailData.value.data_maker_code || '';
+      return detailData.value.solution_code || '';
+    });
+
+    const highlightedDetailCode = computed(() => {
+      const code = activeDetailCode.value;
+      try { return hljs.highlight(code, { language: 'python' }).value; }
+      catch { return code; }
+    });
+
+    async function viewProblem(source, id) {
+      detailFromTab.value = currentTab.value;
+      try {
+        const r = await fetch(`/api/problems/${id}`);
+        detailData.value = await r.json();
+        detailCodeTab.value = 'bf';
+        currentTab.value = 'detail';
+      } catch { alert('加载失败'); }
+    }
+
+    watch(activeCodeTab, () => {
+      nextTick(() => {
+        document.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+      });
+    });
+
+    watch(detailCodeTab, () => {
+      nextTick(() => {
+        document.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+      });
+    });
+
+    onMounted(() => {
+      loadProblems();
+      loadAppsList();
+    });
+
+    // ──── Settings ────
+    const showSettings = ref(false);
+    const showApiKey = ref(false);
+    const settingsSaving = ref(false);
+    const settingsSaved = ref(false);
+    const settingsForm = ref({
+      model: '',
+      base_url: '',
+      api_key: '',
+      api_key_masked: '',
+      max_tokens: 4096,
+      temperature: 0.7,
+    });
+
+    async function loadSettings() {
+      try {
+        const r = await fetch('/api/config');
+        const data = await r.json();
+        settingsForm.value = {
+          model: data.model || '',
+          base_url: data.base_url || '',
+          api_key: '',  // Don't prefill — user must re-enter to change
+          api_key_masked: data.api_key_masked || '',
+          max_tokens: data.max_tokens || 4096,
+          temperature: data.temperature ?? 0.7,
+        };
+      } catch { /* ignore */ }
+    }
+
+    async function openSettings() {
+      settingsSaved.value = false;
+      await loadSettings();
+      showSettings.value = true;
+    }
+
+    async function saveSettings() {
+      settingsSaving.value = true;
+      settingsSaved.value = false;
+      try {
+        const body = {
+          model: settingsForm.value.model || undefined,
+          base_url: settingsForm.value.base_url || undefined,
+          api_key: settingsForm.value.api_key || undefined,
+          max_tokens: settingsForm.value.max_tokens || undefined,
+          temperature: settingsForm.value.temperature ?? undefined,
+        };
+        // Remove undefined/empty fields
+        Object.keys(body).forEach(k => { if (body[k] === undefined || body[k] === '') delete body[k]; });
+
+        const r = await fetch('/api/config', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await r.json();
+        settingsForm.value.api_key_masked = data.api_key_masked || '';
+        settingsForm.value.api_key = '';
+        settingsSaved.value = true;
+      } catch {
+        alert('保存失败');
+      }
+      settingsSaving.value = false;
+    }
+
+    return {
+      tabs, currentTab, detailFromTab,
+      form, solving, solveResult, solveLogs, solveStage, codes, activeCodeTab, codeTabs,
+      addTestCase, submitProblem, activeCodeTabCode, highlightedCode, copyCode,
+      appsSplit, appsList, appsSearch, appsSolvingId, appsSolvingLogs, appsPage, filteredAppsList,
+      loadAppsList, solveApps,
+      cfProblems, cfLoading, cfSearch, cfTagFilter, cfRatingMin, cfRatingMax,
+      cfImportingId, cfTranslatingId, cfSolvingId, cfSolvingLogs, cfTranslation, cfImported,
+      loadCFProblems, cfImport, cfTranslate, cfSolve,
+      problems, loadProblems,
+      detailData, detailCodeTab, activeDetailCode, highlightedDetailCode, viewProblem,
+      showSettings, showApiKey, settingsSaving, settingsSaved, settingsForm,
+      openSettings, saveSettings,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
