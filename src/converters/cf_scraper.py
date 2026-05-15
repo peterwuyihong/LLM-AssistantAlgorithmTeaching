@@ -156,9 +156,12 @@ class _ProblemHTMLParser(HTMLParser):
                 self.in_output_div = True
                 self._collecting_output = True
                 self._current_text = []
-        if tag == "pre" and (self.in_input_div or self.in_output_div):
-            self.in_pre = True
-            self._current_text = []
+            if tag == "pre" and (self.in_input_div or self.in_output_div):
+                self.in_pre = True
+                self._current_text = []
+        # <br> inside <pre> → newline (like CF copy button)
+        if tag == "br" and self.in_pre:
+            self._current_text.append("\n")
 
     def handle_endtag(self, tag):
         if tag == "div":
@@ -202,31 +205,115 @@ class _ProblemHTMLParser(HTMLParser):
             self.statement_parts.append(data)
 
 
+def _pre_to_text(raw_html: str) -> str:
+    """Convert the inner HTML of a <pre> block to plain text,
+    preserving line breaks the same way CF's copy button does.
+
+    CF sample tests use three patterns for line breaks inside <pre>:
+      1. <div class="test-example-line">text</div> per line (most common)
+      2. <br> tags between lines
+      3. Literal newlines in the source HTML
+
+    The copy button on CF copies textContent which preserves all of these.
+    We replicate that by:
+      1. Converting test-example-line divs → text + newline
+      2. Converting <br> → newline
+      3. Removing all other HTML tags
+      4. Decoding HTML entities
+      5. Collapsing runs of blank lines into a single newline
+      6. Stripping leading/trailing whitespace
+    """
+    text = raw_html
+
+    # 1. Convert test-example-line divs → text + newline
+    #    This is the most common pattern on modern CF pages
+    #    Each <div class="test-example-line ...">content</div> becomes "content\n"
+    line_divs = re.findall(
+        r'<div\s+class="test-example-line[^"]*">(.*?)</div>',
+        text, re.DOTALL
+    )
+    if line_divs:
+        # Extract text from each line div (may contain nested tags like <var>)
+        lines = []
+        for line_html in line_divs:
+            line_text = re.sub(r'<[^>]+>', '', line_html)
+            line_text = line_text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+            line_text = line_text.replace('&nbsp;', ' ')
+            lines.append(line_text)
+        return '\n'.join(lines).strip()
+
+    # 2. <br> → \n  (must happen before stripping other tags)
+    text = re.sub(r'<br\s*/?>', '\n', text, flags=re.IGNORECASE)
+    # 3. Remove remaining HTML tags
+    text = re.sub(r'<[^>]+>', '', text)
+    # 4. Decode HTML entities
+    text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+    text = text.replace('&nbsp;', ' ')
+    text = text.replace('&#10;', '\n').replace('&#13;', '').replace('&#xa;', '\n')
+    # 5. Collapse 3+ consecutive blank lines → single blank line
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    # 6. Strip leading/trailing whitespace per line, then overall
+    lines = text.split('\n')
+    lines = [l.rstrip() for l in lines]
+    text = '\n'.join(lines).strip()
+    return text
+
+
 def _extract_with_regex(html: str) -> dict:
-    """Fallback: extract sample tests using regex when HTMLParser fails."""
+    """Fallback: extract sample tests using regex when HTMLParser fails.
+
+    CF HTML structure for sample tests:
+      <div class="sample-test">
+        <div class="input">
+          <div class="title">Input</div>
+          <pre>...</pre>
+        </div>
+        <div class="output">
+          <div class="title">Output</div>
+          <pre>...</pre>
+        </div>
+      </div>
+
+    The <pre> content may use <div class="test-example-line"> per line,
+    <br> tags, or literal newlines. _pre_to_text handles all cases.
+    """
     inputs = []
     outputs = []
 
-    # Match input blocks: <div class="input">...<pre>...</pre>
+    # Strategy: first extract the sample-test section, then find input/output
+    # blocks within it. This avoids matching "input-file" divs outside samples.
+    sample_section = ""
+    sample_match = re.search(r'<div\s+class="sample-test">(.*?)</div>\s*</div>\s*</div>', html, re.DOTALL)
+    if sample_match:
+        sample_section = sample_match.group(1)
+    else:
+        # Looser match: take everything between sample-test and the next major section
+        sample_match = re.search(r'<div\s+class="sample-test">(.*?)(?=<div\s+class="note"|<script)', html, re.DOTALL)
+        if sample_match:
+            sample_section = sample_match.group(1)
+
+    if not sample_section:
+        # Last resort: search entire HTML
+        sample_section = html
+
+    # Match input blocks: exact class="input" (not "input-file" etc.)
+    # Must have <div class="title">Input</div> before <pre>
     input_pattern = re.compile(
-        r'<div\s+class="input[^"]*">.*?<pre>(.*?)</pre>',
+        r'<div\s+class="input"[^>]*>.*?<div\s+class="title">[^<]*</div>.*?<pre[^>]*>(.*?)</pre>',
         re.DOTALL
     )
     output_pattern = re.compile(
-        r'<div\s+class="output[^"]*">.*?<pre>(.*?)</pre>',
+        r'<div\s+class="output"[^>]*>.*?<div\s+class="title">[^<]*</div>.*?<pre[^>]*>(.*?)</pre>',
         re.DOTALL
     )
 
-    for m in input_pattern.finditer(html):
-        text = re.sub(r'<[^>]+>', '', m.group(1)).strip()
-        # Decode HTML entities
-        text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+    for m in input_pattern.finditer(sample_section):
+        text = _pre_to_text(m.group(1))
         if text:
             inputs.append(text)
 
-    for m in output_pattern.finditer(html):
-        text = re.sub(r'<[^>]+>', '', m.group(1)).strip()
-        text = text.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+    for m in output_pattern.finditer(sample_section):
+        text = _pre_to_text(m.group(1))
         if text:
             outputs.append(text)
 
@@ -237,9 +324,13 @@ def _extract_with_regex(html: str) -> dict:
         html, re.DOTALL
     )
     if stmt_match:
-        statement = re.sub(r'<[^>]+>', ' ', stmt_match.group(1))
-        statement = re.sub(r'\s+', ' ', statement).strip()
+        stmt_html = stmt_match.group(1)
+        # Preserve <br> as newline before stripping tags
+        stmt_html = re.sub(r'<br\s*/?>', '\n', stmt_html, flags=re.IGNORECASE)
+        statement = re.sub(r'<[^>]+>', ' ', stmt_html)
+        statement = re.sub(r'[ \t]+', ' ', statement).strip()
         statement = statement.replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+        statement = statement.replace('&nbsp;', ' ')
 
     return {
         "statement": statement,
@@ -368,7 +459,11 @@ def import_cf_problem(contest_id: int, index: str, target_dir: str) -> dict:
     for i, (inp, out) in enumerate(zip(sample_inputs, sample_outputs), 1):
         with open(os.path.join(sample_dir, f"{i}.in"), "w", encoding="utf-8") as f:
             f.write(inp)
+            if not inp.endswith("\n"):
+                f.write("\n")
         with open(os.path.join(sample_dir, f"{i}.ans"), "w", encoding="utf-8") as f:
             f.write(out)
+            if not out.endswith("\n"):
+                f.write("\n")
 
     return question_data
